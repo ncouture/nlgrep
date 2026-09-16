@@ -11,6 +11,7 @@ permissions:
 
 jobs:
   org-ci:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - name: Check out branch
@@ -53,6 +54,11 @@ jobs:
 
       - name: Export README.org to README.md
         run: |
+          if [ ! -f "$GITHUB_WORKSPACE/README.org" ]; then
+            echo "README.org not found; skipping export."
+            exit 0
+          fi
+
           cat <<'EOF' >/tmp/export-readme.el
           (require 'ox-md)
           (with-current-buffer
