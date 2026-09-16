@@ -3,26 +3,29 @@
 (setq org-ci/lint-failed nil)
 
 (dolist (file command-line-args-left)
-  (with-current-buffer (find-file-noselect file)
-    (org-mode)
-    (untabify (point-min) (point-max))
-    (delete-trailing-whitespace)
-    (goto-char (point-min))
-    (while (re-search-forward "^\\([ \t]+\\)\\(#\\+\\)" nil t)
-      (replace-match "\\2"))
-    (goto-char (point-min))
-    (while (re-search-forward "^\\(\\*+\\)\\([^* \n]\\)" nil t)
-      (replace-match "\\1 \\2"))
-    (org-table-map-tables #'org-table-align)
-    (save-buffer)
-    (let ((issues (org-lint)))
-      (when (and (listp issues) issues)
-        (setq org-ci/lint-failed t)
-        (princ
-         (format "\nOrg lint findings for %s:\n%s\n"
-                 file
-                 (mapconcat #'prin1-to-string issues "\n")))))
-    (kill-buffer)))
+  (let ((buffer (find-file-noselect file)))
+    (unwind-protect
+        (with-current-buffer buffer
+          (org-mode)
+          (untabify (point-min) (point-max))
+          (delete-trailing-whitespace)
+          (goto-char (point-min))
+          (while (re-search-forward "^\\([ \t]+\\)\\(#\\+\\)" nil t)
+            (replace-match "\\2"))
+          (goto-char (point-min))
+          (while (re-search-forward "^\\(\\*+\\)\\([^* \n]\\)" nil t)
+            (replace-match "\\1 \\2"))
+          (org-table-map-tables #'org-table-align)
+          (save-buffer)
+          (let ((issues (org-lint)))
+            (when (and (listp issues) issues)
+              (setq org-ci/lint-failed t)
+              (princ
+               (format "\nOrg lint findings for %s:\n%s\n"
+                       file
+                       (mapconcat #'prin1-to-string issues "\n"))))))
+      (when (buffer-live-p buffer)
+        (kill-buffer buffer)))))
 
 (when org-ci/lint-failed
   (kill-emacs 1))

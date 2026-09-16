@@ -5,8 +5,10 @@
                          (or (getenv "GITHUB_WORKSPACE") default-directory))))
   (if (file-exists-p readme-org)
       (let ((readme-buffer (find-file-noselect readme-org)))
-        (with-current-buffer readme-buffer
-          (org-mode)
-          (org-md-export-to-markdown))
-        (kill-buffer readme-buffer))
+        (unwind-protect
+            (with-current-buffer readme-buffer
+              (org-mode)
+              (org-md-export-to-markdown))
+          (when (buffer-live-p readme-buffer)
+            (kill-buffer readme-buffer))))
     (princ "README.org not found; skipping export.\n")))

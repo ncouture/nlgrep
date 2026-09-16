@@ -97,6 +97,18 @@ jobs:
           fi
 
           git commit -m "chore: normalize Org files and export README"
-          git fetch origin "${GITHUB_REF_NAME}"
-          git rebase "origin/${GITHUB_REF_NAME}"
-          git push origin "HEAD:${GITHUB_REF_NAME}"
+
+          for attempt in 1 2 3; do
+            git fetch origin "${GITHUB_REF_NAME}"
+            git rebase "origin/${GITHUB_REF_NAME}"
+
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then
+              exit 0
+            fi
+
+            echo "Push attempt ${attempt} failed; retrying." >&2
+            sleep 2
+          done
+
+          echo "Failed to push generated changes after 3 attempts." >&2
+          exit 1
