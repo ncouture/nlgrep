@@ -1,6 +1,12 @@
 name: Setup minimal Emacs
 description: Restore cached Emacs packages and install emacs-nox with minimal downloads.
 
+inputs:
+  cache-version:
+    description: Cache key suffix for rotating the archived Emacs package cache.
+    required: false
+    default: v1
+
 runs:
   using: composite
   steps:
@@ -9,7 +15,7 @@ runs:
       uses: actions/cache@v4
       with:
         path: ~/.cache/org-ci/emacs-apt-archives
-        key: ubuntu-24.04-apt-emacs-nox-v1
+        key: ubuntu-24.04-apt-emacs-nox-${{ inputs.cache-version }}
 
     - name: Install minimal Emacs
       shell: bash
