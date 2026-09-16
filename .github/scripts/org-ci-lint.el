@@ -1,6 +1,8 @@
 (require 'org)
 
 (setq org-ci/lint-failed nil)
+(setq org-ci/fail-on-lint
+      (not (string= (or (getenv "ORG_CI_FAIL_ON_LINT") "true") "false")))
 
 (dolist (file command-line-args-left)
   (let ((buffer (find-file-noselect file)))
@@ -28,4 +30,5 @@
         (kill-buffer buffer)))))
 
 (when org-ci/lint-failed
-  (kill-emacs 1))
+  (when org-ci/fail-on-lint
+    (kill-emacs 1)))
