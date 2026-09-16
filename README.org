@@ -1,10 +1,10 @@
-#+TITLE: xtr — Fast Semantic Data Extractor for Linux
+#+TITLE: nlgrep — Fast Semantic Data Extractor for Linux (Natural Language Grep)
 #+AUTHOR:
 #+OPTIONS: toc:nil num:nil
 
-~xtr~ is a standalone, high-performance command-line utility built in Go that functions like ~grep~, but is specialized for *structured data types and entity extraction*. It combines regular expressions, algorithmic checksum validators (Luhn, Mod-97, Mod-11), and a natural language query router.
+~nlgrep~ is a standalone, high-performance command-line utility built in Go that functions like ~grep~, but is specialized for *structured data types and entity extraction*. It combines regular expressions, algorithmic checksum validators (Luhn, Mod-97, Mod-11), and a natural language query router.
 
-Unlike standard ~grep~, which prints entire lines by default and requires arcane regular expressions, ~xtr~ defaults to extracting *only the matched pattern* (like ~grep -o~), supports natural language subcommands (~xtr "find all emails"~), and applies mathematical validation to the types that carry check digits.
+Unlike standard ~grep~, which prints entire lines by default and requires arcane regular expressions, ~nlgrep~ defaults to extracting *only the matched pattern* (like ~grep -o~), supports natural language subcommands (~nlgrep "find all emails"~), and applies mathematical validation to the types that carry check digits.
 
 -----
 
@@ -26,14 +26,14 @@ Unlike standard ~grep~, which prints entire lines by default and requires arcane
 
 * Key Features
 
-- *Natural Language Intent Recognition*: Run ~./xtr urls~, ~./xtr "find emails"~, or ~./xtr "show me credit cards"~ without remembering strict syntax.
+- *Natural Language Intent Recognition*: Run ~./nlgrep urls~, ~./nlgrep "find emails"~, or ~./nlgrep "show me credit cards"~ without remembering strict syntax.
 - *Algorithmic Checksum Verification*: Mathematically verifies Credit Cards (Luhn), Bank Accounts (IBAN Mod-97), Book IDs (ISBN-10/13), Vehicle Identifiers (VIN Mod-11), and US SSNs. IP addresses are additionally parsed with ~net.ParseIP~ rather than matched by shape alone.
 - *Grep-Compatible Context Controls*:
   - Default: Extracts *only the pattern* (e.g. ~user@example.com~).
   - ~--line~, ~-L~, ~-whole-line~: Prints the *entire line* containing the pattern.
   - ~-A <N>~: Prints ~<N>~ lines *after and including* the matching line.
   - ~-B <M>~: Prints ~<M>~ lines *before and including* the matching line.
-- *UNIX Pipeline Streaming*: Reads from files or standard input (~cat log | xtr -u ips~) with bounded memory usage using a sliding-window ring buffer.
+- *UNIX Pipeline Streaming*: Reads from files or standard input (~cat log | nlgrep -u ips~) with bounded memory usage using a sliding-window ring buffer.
 - *ReDoS Immune*: Implemented with Go's RE2 engine, guaranteeing $O(n)$ worst-case execution time on untrusted data.
 - *100% Statically Linked*: Compiles into a single binary with zero external package dependencies (~not a dynamic executable~).
 
@@ -41,27 +41,27 @@ Unlike standard ~grep~, which prints entire lines by default and requires arcane
 
 * Building & Installation
 
-~xtr~ is written in standard Go with zero third-party dependencies. There is no ~go.mod~ — the single source file is compiled directly.
+~nlgrep~ is written in standard Go with zero third-party dependencies. There is no ~go.mod~ — the single source file is compiled directly.
 
 ** Build as a Static ELF Binary
 
 #+begin_src bash
 # Build standalone binary stripped of debug symbols
-CGO_ENABLED=0 go build -ldflags="-s -w" -o xtr xtr.go
+CGO_ENABLED=0 go build -ldflags="-s -w" -o nlgrep nlgrep.go
 
 # Verify it has zero dynamic dependencies
-file xtr
-# Output: xtr: ELF 64-bit LSB executable, ..., statically linked, stripped
+file nlgrep
+# Output: nlgrep: ELF 64-bit LSB executable, ..., statically linked, stripped
 
 # Move to a system or user PATH directory
-chmod +x xtr
-mv xtr /usr/local/bin/   # or ~/bin/
+chmod +x nlgrep
+mv nlgrep /usr/local/bin/   # or ~/bin/
 #+end_src
 
 ** Run Directly Without Compiling
 
 #+begin_src bash
-go run xtr.go urls access.log
+go run nlgrep.go urls access.log
 #+end_src
 
 Note that ~go run~ does *not* propagate the program's exit status — it reports ~1~ for any nonzero exit. Build the binary if you need to test the exit codes below.
@@ -71,8 +71,8 @@ Note that ~go run~ does *not* propagate the program's exit status — it reports
 There is no test suite. The available checks are:
 
 #+begin_src bash
-go vet xtr.go
-gofmt -l xtr.go
+go vet nlgrep.go
+gofmt -l nlgrep.go
 #+end_src
 
 -----
@@ -81,8 +81,8 @@ gofmt -l xtr.go
 
 #+begin_example
 Usage:
-  xtr [options] <data-type | "natural language query"> [file ...]
-  cat input.txt | xtr [options] <data-type | "query">
+  nlgrep [options] <data-type | "natural language query"> [file ...]
+  cat input.txt | nlgrep [options] <data-type | "query">
 #+end_example
 
 ** Flags and Options
@@ -103,12 +103,12 @@ Notes on flag behavior:
 - Passing ~-A~ or ~-B~ greater than zero *implies* ~--line~; context output is always whole lines.
 - ~--color~ only affects whole-line and context output. In the default pattern-only mode the match *is* the whole output, so no highlight is applied.
 - ~-u~ dedupes across *all* input files, not per file.
-- ~-c~ reports the total number of matches, and is *not* reduced by ~-u~. ~xtr -c -u emails f~ prints the raw match count, not the number of distinct addresses. To count distinct values, use ~xtr -u emails f | wc -l~.
+- ~-c~ reports the total number of matches, and is *not* reduced by ~-u~. ~nlgrep -c -u emails f~ prints the raw match count, not the number of distinct addresses. To count distinct values, use ~nlgrep -u emails f | wc -l~.
 - Multiple files produce no filename prefixes, and ~-n~ line numbers restart at 1 for each file.
 - ~list~ / ~help~ / ~--help~ / ~-h~ write *everything to STDERR*. Redirect when piping or grepping the type registry:
 
 #+begin_src bash
-xtr list 2>&1 | grep coordinates
+nlgrep list 2>&1 | grep coordinates
 #+end_src
 
 -----
@@ -122,17 +122,17 @@ xtr list 2>&1 | grep coordinates
 |    2 | Unrecognized data type or query                          |
 |    3 | Failed to open an input file                             |
 
-*This differs from ~grep~*, which exits ~1~ when nothing matches. A shell test like ~xtr ssns data.csv && alert~ will fire unconditionally. Test for output instead:
+*This differs from ~grep~*, which exits ~1~ when nothing matches. A shell test like ~nlgrep ssns data.csv && alert~ will fire unconditionally. Test for output instead:
 
 #+begin_src bash
-[ -n "$(xtr ssns data.csv)" ] && alert
+[ -n "$(nlgrep ssns data.csv)" ] && alert
 #+end_src
 
 -----
 
 * Context Windows (-A and -B)
 
-~xtr~ implements precise context controls where the count *includes* the matching line:
+~nlgrep~ implements precise context controls where the count *includes* the matching line:
 
 - *~-A <N>~ (Lines After and Including Match)*:
   - ~-A 1~: Prints the matching line itself.
@@ -149,7 +149,7 @@ xtr list 2>&1 | grep coordinates
 With ~-n~, the matching line is marked with ~:~ and context lines with ~-~, mirroring ~grep~:
 
 #+begin_example
-$ xtr -n -B 2 -A 3 emails ctx.txt
+$ nlgrep -n -B 2 -A 3 emails ctx.txt
 3-line 3
 4:line 4 hit@a.com
 5-line 5
@@ -176,24 +176,24 @@ You don't need to memorize exact command strings. The built-in router resolves a
 
 | User Query                               | Resolved Extractor |
 |------------------------------------------+--------------------|
-| ~xtr urls~                               | ~urls~             |
-| ~xtr "extract all web links"~            | ~urls~             |
-| ~xtr "find email addresses"~             | ~emails~           |
-| ~xtr "show me credit cards"~             | ~credit_cards~     |
-| ~xtr "get ip addresses"~                 | ~ips~              |
-| ~xtr "look for phone numbers"~           | ~phone_numbers~    |
-| ~xtr "where are the mac addresses"~      | ~mac_addresses~    |
-| ~xtr "list all bank accounts"~           | ~ibans~            |
-| ~xtr "cve security bugs"~                | ~cves~             |
-| ~xtr "find bitcoin or ethereum wallets"~ | ~crypto~           |
-| ~xtr emaisl~ (typo)                      | ~emails~           |
-| ~xtr phne~ (typo)                        | ~phone_numbers~    |
+| ~nlgrep urls~                               | ~urls~             |
+| ~nlgrep "extract all web links"~            | ~urls~             |
+| ~nlgrep "find email addresses"~             | ~emails~           |
+| ~nlgrep "show me credit cards"~             | ~credit_cards~     |
+| ~nlgrep "get ip addresses"~                 | ~ips~              |
+| ~nlgrep "look for phone numbers"~           | ~phone_numbers~    |
+| ~nlgrep "where are the mac addresses"~      | ~mac_addresses~    |
+| ~nlgrep "list all bank accounts"~           | ~ibans~            |
+| ~nlgrep "cve security bugs"~                | ~cves~             |
+| ~nlgrep "find bitcoin or ethereum wallets"~ | ~crypto~           |
+| ~nlgrep emaisl~ (typo)                      | ~emails~           |
+| ~nlgrep phne~ (typo)                        | ~phone_numbers~    |
 
 -----
 
 * Supported Data Types & Categories
 
-29 extractors across 16 categories. Run ~xtr list 2>&1~ to view them from the binary itself — the ~Registry~ in ~xtr.go~ is the authoritative source.
+29 extractors across 16 categories. Run ~nlgrep list 2>&1~ to view them from the binary itself — the ~Registry~ in ~nlgrep.go~ is the authoritative source.
 
 | Category               | Extractor ID    | Standard / Grammar                     | Verification Method                                   |
 |------------------------+-----------------+----------------------------------------+-------------------------------------------------------|
@@ -236,7 +236,7 @@ Two entries carry aliases broader than their implementation:
 
 * Algorithmic Verification & Checksums
 
-For the types that carry a check digit, ~xtr~ does not simply match digit lengths — it verifies the arithmetic. This is the "broad regex, then validate" pattern, and it is what keeps false positives low on the financial and identity types.
+For the types that carry a check digit, ~nlgrep~ does not simply match digit lengths — it verifies the arithmetic. This is the "broad regex, then validate" pattern, and it is what keeps false positives low on the financial and identity types.
 
 ** 1. Luhn Modulo-10 Algorithm (~credit_cards~)
 
@@ -270,47 +270,47 @@ Every other extractor is regex-shape only. Where bounds matter, they are encoded
 
 #+begin_src bash
 # Extract all clean URLs from an Nginx access log:
-xtr urls /var/log/nginx/access.log
+nlgrep urls /var/log/nginx/access.log
 
 # Extract all unique email addresses from a mail dump:
-xtr -u emails /var/spool/mail/dump.txt
+nlgrep -u emails /var/spool/mail/dump.txt
 
 # Extract all IPv4 and IPv6 addresses with line numbers:
-xtr -n ips /var/log/syslog
+nlgrep -n ips /var/log/syslog
 #+end_src
 
 ** 2. Printing Full Matching Lines (~--line~)
 
 #+begin_src bash
 # Print every line in an SQL dump that contains a Luhn-valid credit card:
-xtr --line "find credit cards" backup.sql
+nlgrep --line "find credit cards" backup.sql
 
 # Print lines mentioning CVE vulnerabilities:
-xtr --line cves security_report.txt
+nlgrep --line cves security_report.txt
 #+end_src
 
 ** 3. Extracting Context Around Matches (~-A~ and ~-B~)
 
 #+begin_src bash
 # Print 1 line before and 2 lines after any line containing a URL:
-xtr -B 2 -A 3 urls /var/log/app.log
+nlgrep -B 2 -A 3 urls /var/log/app.log
 
 # Inspect the 2 lines preceding an alert containing an IP address:
-xtr -B 3 ips alert.log
+nlgrep -B 3 ips alert.log
 #+end_src
 
 ** 4. Pipeline Streaming and Filtering
 
 #+begin_src bash
-# Stream journalctl directly through xtr:
-journalctl -u my-service -f | xtr "find urls"
+# Stream journalctl directly through nlgrep:
+journalctl -u my-service -f | nlgrep "find urls"
 
 # Count *distinct* cryptocurrency addresses in a transaction dump
 # (use -u | wc -l, not -c -u, which counts every match):
-cat mempool.json | xtr -u crypto | wc -l
+cat mempool.json | nlgrep -u crypto | wc -l
 
 # Count every SSN occurrence in a file:
-xtr -c ssns sensitive_data.csv
+nlgrep -c ssns sensitive_data.csv
 #+end_src
 
 -----
@@ -321,7 +321,7 @@ Checksum-backed types are precise. The regex-only types are deliberately broad, 
 
 ** Extractors that match less than their name suggests
 
-- *~crypto~ does not extract Solana addresses*, despite the ~solana~ alias resolving and the description mentioning it. A ~reSolana~ pattern is compiled in ~xtr.go~ but is not wired into the ~crypto~ extractor. Wiring it in needs a false-positive story first: it is length-bounded Base58 with no checksum, so it would match a great many non-addresses.
+- *~crypto~ does not extract Solana addresses*, despite the ~solana~ alias resolving and the description mentioning it. A ~reSolana~ pattern is compiled in ~nlgrep.go~ but is not wired into the ~crypto~ extractor. Wiring it in needs a false-positive story first: it is length-bounded Base58 with no checksum, so it would match a great many non-addresses.
 - *~isbns~ rejects lowercase prefixes.* The regex is case-insensitive but the validator strips the literal ~"ISBN"~ case-sensitively, so ~ISBN 978-3-16-148410-0~ and bare ~9783161484100~ match while ~isbn 978-3-16-148410-0~ does not.
 - *~chess_fen~ does not sum ranks.* It requires 8 slash-separated ranks and the full trailing field sequence, but does not verify that each rank describes 8 squares — ~pppp/8/8/8/8/8/8/8 w KQkq - 0 1~ is accepted.
 - *~metar~ and ~user_agents~ capture a prefix, not the whole record.* ~metar~ stops after the visibility group; ~user_agents~ matches only ~Mozilla/5.0~-prefixed strings and stops at the first unsupported character.
@@ -343,7 +343,7 @@ Pipe through ~--line~ to inspect surrounding context when precision matters, or 
 
 * Architecture & Performance
 
-- *Single File, Zero Dependencies*: All logic lives in ~xtr.go~ — validators, precompiled regexes, the ~Registry~, the intent router, and the stream processor. Adding a data type means adding a regex (plus a validator if it has a checksum) and appending one ~Extractor~ entry; flag parsing, help text, and the router all iterate the registry generically.
+- *Single File, Zero Dependencies*: All logic lives in ~nlgrep.go~ — validators, precompiled regexes, the ~Registry~, the intent router, and the stream processor. Adding a data type means adding a regex (plus a validator if it has a checksum) and appending one ~Extractor~ entry; flag parsing, help text, and the router all iterate the registry generically.
 - *Zero Memory Bloat*: Stream processing reads inputs line-by-line via ~bufio.Scanner~ with a buffer expandable up to 10MB per line for minified JSON/HTML files. Without ~-A~/~-B~/~--line~, output streams in O(1) memory.
 - *Bounded Context Buffering*: The ~-B~ flag uses a sliding slice buffer sized strictly to the requested line count, ensuring constant memory overhead regardless of whether the file is 10 KB or 100 GB.
 - *RE2 Safety*: Go's native regular expression library prevents catastrophic backtracking (ReDoS attacks) that affect utilities built on PCRE. All patterns are precompiled once at package init and use RE2 syntax only — no backreferences or lookahead.
