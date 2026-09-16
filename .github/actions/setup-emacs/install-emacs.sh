@@ -33,9 +33,8 @@ fi
 if ! install_from_archives; then
   find "${cache_dir}" -maxdepth 1 -type f -name '*.deb' -delete
   sudo apt-get update
-  sudo apt-get -o Dir::Cache::archives="${cache_dir}" install -y --download-only --no-install-recommends emacs-nox
+  sudo apt-get -o Dir::Cache::archives="${cache_dir}" install -y --no-install-recommends emacs-nox
   sudo chown -R "$(id -u):$(id -g)" "${cache_dir}"
-  install_from_archives
 fi
 
 emacs --version | head -n 1
