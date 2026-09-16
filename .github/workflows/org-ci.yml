@@ -24,58 +24,13 @@ jobs:
 
       - name: Lint and fix Org files
         run: |
-          cat <<'EOF' >/tmp/org-ci-lint.el
-          (require 'org)
-          (setq org-ci/lint-failed nil)
-          (dolist (file command-line-args-left)
-            (with-current-buffer (find-file-noselect file)
-              (org-mode)
-              (untabify (point-min) (point-max))
-              (delete-trailing-whitespace)
-              (goto-char (point-min))
-              (while (re-search-forward "^\\([ \t]+\\)\\(#\\+\\)" nil t)
-                (replace-match "\\2"))
-              (goto-char (point-min))
-              (while (re-search-forward "^\\(\\*+\\)\\([^* \n]\\)" nil t)
-                (replace-match "\\1 \\2"))
-              (org-table-map-tables #'org-table-align)
-              (save-buffer)
-              (let ((issues (org-lint)))
-                (when issues
-                  (setq org-ci/lint-failed t)
-                  (let ((lint-buffer (get-buffer "*Org Lint*")))
-                    (when lint-buffer
-                      (princ (format "\nOrg lint findings for %s:\n%s\n"
-                                     file
-                                     (with-current-buffer lint-buffer
-                                       (buffer-string))))
-                      (kill-buffer lint-buffer)))))
-              (kill-buffer)))
-          (when org-ci/lint-failed
-            (kill-emacs 1))
-          EOF
-
           mapfile -d '' org_files < <(find "$GITHUB_WORKSPACE" -type f -name '*.org' -print0 | sort -z)
           if [ "${#org_files[@]}" -gt 0 ]; then
-            emacs --batch --quick -l /tmp/org-ci-lint.el -- "${org_files[@]}"
+            emacs --batch --quick -l "$GITHUB_WORKSPACE/.github/scripts/org-ci-lint.el" -- "${org_files[@]}"
           fi
 
       - name: Export README.org to README.md
-        run: |
-          if [ ! -f "$GITHUB_WORKSPACE/README.org" ]; then
-            echo "README.org not found; skipping export."
-            exit 0
-          fi
-
-          cat <<'EOF' >/tmp/export-readme.el
-          (require 'ox-md)
-          (with-current-buffer
-              (find-file-noselect (expand-file-name "README.org" (getenv "GITHUB_WORKSPACE")))
-            (org-mode)
-            (org-md-export-to-markdown))
-          EOF
-
-          emacs --batch --quick -l /tmp/export-readme.el
+        run: emacs --batch --quick -l "$GITHUB_WORKSPACE/.github/scripts/export-readme.el"
 
       - name: Check for generated updates
         run: |
@@ -103,7 +58,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ github.sha }}
+          ref: ${{ github.ref_name }}
 
       - name: Install minimal Emacs
         run: |
@@ -112,58 +67,13 @@ jobs:
 
       - name: Lint and fix Org files
         run: |
-          cat <<'EOF' >/tmp/org-ci-lint.el
-          (require 'org)
-          (setq org-ci/lint-failed nil)
-          (dolist (file command-line-args-left)
-            (with-current-buffer (find-file-noselect file)
-              (org-mode)
-              (untabify (point-min) (point-max))
-              (delete-trailing-whitespace)
-              (goto-char (point-min))
-              (while (re-search-forward "^\\([ \t]+\\)\\(#\\+\\)" nil t)
-                (replace-match "\\2"))
-              (goto-char (point-min))
-              (while (re-search-forward "^\\(\\*+\\)\\([^* \n]\\)" nil t)
-                (replace-match "\\1 \\2"))
-              (org-table-map-tables #'org-table-align)
-              (save-buffer)
-              (let ((issues (org-lint)))
-                (when issues
-                  (setq org-ci/lint-failed t)
-                  (let ((lint-buffer (get-buffer "*Org Lint*")))
-                    (when lint-buffer
-                      (princ (format "\nOrg lint findings for %s:\n%s\n"
-                                     file
-                                     (with-current-buffer lint-buffer
-                                       (buffer-string))))
-                      (kill-buffer lint-buffer)))))
-              (kill-buffer)))
-          (when org-ci/lint-failed
-            (kill-emacs 1))
-          EOF
-
           mapfile -d '' org_files < <(find "$GITHUB_WORKSPACE" -type f -name '*.org' -print0 | sort -z)
           if [ "${#org_files[@]}" -gt 0 ]; then
-            emacs --batch --quick -l /tmp/org-ci-lint.el -- "${org_files[@]}"
+            emacs --batch --quick -l "$GITHUB_WORKSPACE/.github/scripts/org-ci-lint.el" -- "${org_files[@]}"
           fi
 
       - name: Export README.org to README.md
-        run: |
-          if [ ! -f "$GITHUB_WORKSPACE/README.org" ]; then
-            echo "README.org not found; skipping export."
-            exit 0
-          fi
-
-          cat <<'EOF' >/tmp/export-readme.el
-          (require 'ox-md)
-          (with-current-buffer
-              (find-file-noselect (expand-file-name "README.org" (getenv "GITHUB_WORKSPACE")))
-            (org-mode)
-            (org-md-export-to-markdown))
-          EOF
-
-          emacs --batch --quick -l /tmp/export-readme.el
+        run: emacs --batch --quick -l "$GITHUB_WORKSPACE/.github/scripts/export-readme.el"
 
       - name: Commit and push generated updates
         run: |
