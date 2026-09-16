@@ -9,7 +9,7 @@ runs:
       uses: actions/cache@v4
       with:
         path: ~/.cache/org-ci/emacs-apt-archives
-        key: ubuntu-24.04-apt-emacs-nox-29.3-v1
+        key: ubuntu-24.04-apt-emacs-nox-v1
 
     - name: Install minimal Emacs
       shell: bash
