@@ -35,6 +35,7 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     permissions:
+      actions: read
       contents: read
       security-events: write
     steps:
@@ -80,11 +81,20 @@ jobs:
         if: steps.locate_sarif.outputs.sarif_found == 'true'
         run: |
           sarif_file="${{ steps.locate_sarif.outputs.sarif_file }}"
-          result_count=$(jq '(.runs[0].results // []) | length' "$sarif_file")
+          result_count=$(jq '[.runs[]?.results[]?] | length' "$sarif_file")
           echo "result_count=$result_count" >> "$GITHUB_OUTPUT"
           {
             echo "findings<<EOF"
-            jq -r '(.runs[0].results // [])[] | "- **" + .ruleId + "**: " + .message.text + " (" + .locations[0].physicalLocation.artifactLocation.uri + ":" + (.locations[0].physicalLocation.region.startLine | tostring) + ")"' "$sarif_file"
+            jq -r '
+              .runs[]?.results[]?
+              | "- **" + (.ruleId // "unknown-rule") + "**: "
+                + (.message.text // "No message provided")
+                + " ("
+                + (.locations[0]?.physicalLocation?.artifactLocation?.uri // "unknown file")
+                + ":"
+                + ((.locations[0]?.physicalLocation?.region?.startLine // "unknown line") | tostring)
+                + ")"
+            ' "$sarif_file"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
       - name: Upload SARIF to code scanning
