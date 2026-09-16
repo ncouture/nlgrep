@@ -95,8 +95,10 @@ jobs:
           fi
 
           git commit -m "chore: normalize Org files and export README"
+          generated_commit="$(git rev-parse HEAD)"
 
           for attempt in 1 2 3; do
+            git reset --hard "${generated_commit}"
             git fetch origin "${GITHUB_REF_NAME}"
             git rebase "origin/${GITHUB_REF_NAME}"
 
