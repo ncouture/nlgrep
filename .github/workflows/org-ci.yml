@@ -83,40 +83,33 @@ jobs:
         run: |
           set -euo pipefail
 
-          if git diff --quiet && [ -z "$(git ls-files --others --exclude-standard)" ]; then
-            echo "No changes to commit."
-            exit 0
-          fi
-
           git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-
-          if git diff --cached --quiet; then
-            echo "No staged changes after git add."
-            exit 0
-          fi
-
-          git commit -m "chore: normalize Org files and export README"
-          generated_commit="$(git rev-parse HEAD)"
-          generated_ref="refs/org-ci/generated-update"
-          git update-ref "${generated_ref}" "${generated_commit}"
 
           for attempt in 1 2 3; do
             git fetch origin "${GITHUB_REF_NAME}"
-            if [ "$(git cherry "origin/${GITHUB_REF_NAME}" "${generated_ref}" | cut -d' ' -f1)" = "-" ]; then
-              echo "Generated changes are already present upstream."
+            git reset --hard "origin/${GITHUB_REF_NAME}"
+
+            mapfile -d '' org_files < <(find "$GITHUB_WORKSPACE" -type f -name '*.org' -print0 | sort -z)
+            if [ "${#org_files[@]}" -gt 0 ]; then
+              ORG_CI_FAIL_ON_LINT="false" emacs --batch --quick -l "$GITHUB_WORKSPACE/.github/scripts/org-ci-lint.el" -- "${org_files[@]}"
+            fi
+            emacs --batch --quick -l "$GITHUB_WORKSPACE/.github/scripts/export-readme.el"
+
+            if git diff --quiet && [ -z "$(git ls-files --others --exclude-standard)" ]; then
+              echo "No changes to commit."
               exit 0
             fi
-            git reset --hard "origin/${GITHUB_REF_NAME}"
-            if ! git cherry-pick "${generated_ref}"; then
-              git cherry-pick --abort || true
-              git reset --hard "origin/${GITHUB_REF_NAME}"
-              echo "Cherry-pick attempt ${attempt} failed; retrying." >&2
-              sleep 2
-              continue
+
+            git add -A
+
+            if git diff --cached --quiet; then
+              echo "No staged changes after git add."
+              exit 0
             fi
+
+            git commit -m "chore: normalize Org files and export README"
 
             if git push origin "HEAD:${GITHUB_REF_NAME}"; then
               exit 0
