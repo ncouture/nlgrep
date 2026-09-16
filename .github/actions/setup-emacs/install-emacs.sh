@@ -21,6 +21,7 @@ install_from_archives() {
     fi
 
     sudo dpkg -i "${archives[@]}" || sudo apt-get install -y --no-download -f
+    command -v emacs >/dev/null 2>&1
   )
 }
 
