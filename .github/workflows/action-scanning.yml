@@ -44,26 +44,10 @@ jobs:
           fetch-depth: 1
           sparse-checkout: .github
 
-      - name: Check for workflow files
-        id: check_files
-        run: |
-          found_files=$(find .github -regextype posix-extended -type f \
-            \( -regex '.github/workflows/.+\.ya?ml' -o \
-            -regex '.github/actions/.+\.ya?ml' -o \
-            -regex '.github/actions/.+/action\.ya?ml' \) \
-            | head -n 1)
-          if [ -n "$found_files" ]; then
-            echo "workflow_files_found=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "workflow_files_found=false" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Create CodeQL query suite
-        if: steps.check_files.outputs.workflow_files_found == 'true'
         run: echo "${{ env.ACTIONS_SUITE_CONTENT }}" > actions-suite.qls
 
       - name: Initialize CodeQL
-        if: steps.check_files.outputs.workflow_files_found == 'true'
         uses: github/codeql-action/init@v4
         with:
           languages: actions
@@ -75,7 +59,6 @@ jobs:
 
       - name: Perform CodeQL analysis
         id: codeql_analysis
-        if: steps.check_files.outputs.workflow_files_found == 'true'
         uses: github/codeql-action/analyze@v4
         with:
           output: ${{ env.CODEQL_RESULTS_DIR }}
@@ -83,7 +66,6 @@ jobs:
 
       - name: Locate SARIF output
         id: locate_sarif
-        if: steps.check_files.outputs.workflow_files_found == 'true'
         run: |
           sarif_file="$(find "${{ env.CODEQL_RESULTS_DIR }}" -maxdepth 1 -type f -name '*.sarif' | head -n 1)"
           if [ -n "$sarif_file" ]; then
@@ -105,10 +87,8 @@ jobs:
             jq -r '(.runs[0].results // [])[] | "- **" + .ruleId + "**: " + .message.text + " (" + .locations[0].physicalLocation.artifactLocation.uri + ":" + (.locations[0].physicalLocation.region.startLine | tostring) + ")"' "$sarif_file"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
-
       - name: Check for vulnerabilities and set status
         id: vuln_check
-        if: steps.check_files.outputs.workflow_files_found == 'true'
         run: |
           if [ "${{ steps.locate_sarif.outputs.sarif_found }}" != 'true' ]; then
             echo "SARIF file not found under ${{ env.CODEQL_RESULTS_DIR }}"
@@ -125,13 +105,13 @@ jobs:
           echo "No vulnerabilities found."
 
       - name: Upload SARIF to code scanning
-        if: always() && steps.check_files.outputs.workflow_files_found == 'true' && steps.locate_sarif.outputs.sarif_found == 'true'
+        if: always() && steps.locate_sarif.outputs.sarif_found == 'true' && github.event.pull_request.head.repo.full_name == github.repository
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: ${{ steps.locate_sarif.outputs.sarif_file }}
 
       - name: Explain failures and next steps
-        if: failure() && steps.check_files.outputs.workflow_files_found == 'true' && steps.codeql_analysis.conclusion != 'skipped'
+        if: failure() && steps.codeql_analysis.conclusion != 'skipped'
         run: |
           sarif_file="${{ steps.locate_sarif.outputs.sarif_file }}"
           {
