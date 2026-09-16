@@ -1,6 +1,6 @@
 name: Org CI
 
-on:
+"on":
   push:
     branches: [main]
   pull_request:
