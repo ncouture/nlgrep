@@ -1,0 +1,145 @@
+name: Actions Workflow Security Scan
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/**/*.yml"
+      - ".github/workflows/**/*.yaml"
+      - ".github/actions/**/*.yml"
+      - ".github/actions/**/*.yaml"
+      - ".github/actions/**/action.yml"
+      - ".github/actions/**/action.yaml"
+
+env:
+  ACTIONS_SUITE_CONTENT: |
+    - qlpack: codeql/actions-queries
+    - include:
+        id: actions/envvar-injection/critical
+    - include:
+        id: actions/envpath-injection/critical
+    - include:
+        id: actions/cache-poisoning/poisonable-step
+    - include:
+        id: actions/artifact-poisoning/critical
+    - include:
+        id: actions/untrusted-checkout/critical
+    - include:
+        id: actions/untrusted-checkout/high
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  scan-pr:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout PR code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          sparse-checkout: .github
+
+      - name: Check for workflow files
+        id: check_files
+        run: |
+          found_files=$(find . -type f \( \
+            -path './.github/workflows/*.yml' -o \
+            -path './.github/workflows/*.yaml' -o \
+            -path './.github/workflows/*/*.yml' -o \
+            -path './.github/workflows/*/*.yaml' -o \
+            -path './.github/actions/*.yml' -o \
+            -path './.github/actions/*.yaml' -o \
+            -path './.github/actions/*/*.yml' -o \
+            -path './.github/actions/*/*.yaml' -o \
+            -path './.github/actions/*/action.yml' -o \
+            -path './.github/actions/*/action.yaml' \
+          \) | head -n 1)
+          if [ -n "$found_files" ]; then
+            echo "workflow_files_found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "workflow_files_found=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create CodeQL query suite
+        if: steps.check_files.outputs.workflow_files_found == 'true'
+        run: echo "${{ env.ACTIONS_SUITE_CONTENT }}" > actions-suite.qls
+
+      - name: Initialize CodeQL
+        if: steps.check_files.outputs.workflow_files_found == 'true'
+        uses: github/codeql-action/init@v3
+        with:
+          languages: actions
+          config: |
+            name: Custom Action Scan
+            disable-default-queries: true
+            queries:
+              - uses: ./actions-suite.qls
+
+      - name: Perform CodeQL analysis
+        id: codeql_analysis
+        if: steps.check_files.outputs.workflow_files_found == 'true'
+        uses: github/codeql-action/analyze@v3
+        with:
+          upload: never
+
+      - name: Check for vulnerabilities and set status
+        id: vuln_check
+        if: steps.check_files.outputs.workflow_files_found == 'true'
+        run: |
+          sarif_file="${{ steps.codeql_analysis.outputs.sarif-output }}/actions.sarif"
+          if [ ! -f "$sarif_file" ]; then
+            echo "SARIF file not found at $sarif_file"
+            exit 1
+          fi
+
+          result_count=$(jq '.runs[0].results | length' "$sarif_file")
+          if [ "$result_count" -gt 0 ]; then
+            echo "::error::CodeQL found $result_count potential vulnerabilities."
+            echo "---"
+            jq -r '.runs[0].results[] | ("Rule ID: " + .ruleId + "\nMessage: " + .message.text + "\nFile: " + .locations[0].physicalLocation.artifactLocation.uri + "\nLine: " + (.locations[0].physicalLocation.region.startLine | tostring) + "\n---")' "$sarif_file"
+            exit 1
+          fi
+
+          echo "No vulnerabilities found."
+
+      - name: Upload SARIF file on failure
+        if: failure() && steps.vuln_check.conclusion == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: sarif-report
+          path: ${{ steps.codeql_analysis.outputs.sarif-output }}/actions.sarif
+          retention-days: 1
+          overwrite: true
+
+      - name: Explain failures and next steps
+        if: failure() && steps.vuln_check.conclusion == 'failure'
+        run: |
+          sarif_file="${{ steps.codeql_analysis.outputs.sarif-output }}/actions.sarif"
+          {
+            echo "### Security scan results"
+            echo
+            echo "This automated scan checks for common GitHub Actions security issues in workflow and composite action files."
+            echo "Review any flagged findings before merging." 
+            echo
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ -f "$sarif_file" ]; then
+            echo "#### Findings" >> "$GITHUB_STEP_SUMMARY"
+            jq -r '.runs[0].results[] | "- **" + .ruleId + "**: " + .message.text + " (" + .locations[0].physicalLocation.artifactLocation.uri + ":" + (.locations[0].physicalLocation.region.startLine | tostring) + ")"' "$sarif_file" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "SARIF file not found, cannot list specific findings." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+          {
+            echo
+            echo "#### Documentation"
+            echo "- [Untrusted Checkout (High)](https://codeql.github.com/codeql-query-help/actions/actions-untrusted-checkout-high/)"
+            echo "- [Artifact Poisoning (Critical)](https://codeql.github.com/codeql-query-help/actions/actions-artifact-poisoning-critical/)"
+            echo "- [Cache Poisoning (Poisonable Step)](https://codeql.github.com/codeql-query-help/actions/actions-cache-poisoning-poisonable-step/)"
+            echo "- [Envpath Injection (Critical)](https://codeql.github.com/codeql-query-help/actions/actions-envpath-injection-critical/)"
+            echo "- [Envvar Injection (Critical)](https://codeql.github.com/codeql-query-help/actions/actions-envvar-injection-critical/)"
+          } >> "$GITHUB_STEP_SUMMARY"
