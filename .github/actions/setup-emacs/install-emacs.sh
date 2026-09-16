@@ -34,7 +34,8 @@ fi
 if ! install_from_archives; then
   sudo dpkg --configure -a || true
   sudo apt-get install -y -f || true
-  find "${cache_dir}" -maxdepth 1 -type f -name '*.deb' -delete
+  rm -rf "${cache_dir}"
+  mkdir -p "${cache_dir}/partial"
   sudo apt-get update
   sudo apt-get -o Dir::Cache::archives="${cache_dir}" install -y --no-install-recommends emacs-nox
   sudo chown -R "$(id -u):$(id -g)" "${cache_dir}"
