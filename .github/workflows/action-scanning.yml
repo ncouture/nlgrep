@@ -49,7 +49,8 @@ jobs:
         run: |
           found_files=$(find .github -regextype posix-extended -type f \
             \( -regex '.github/workflows/.+\.ya?ml' -o \
-            -regex '.github/actions/.+\.ya?ml' \) \
+            -regex '.github/actions/.+\.ya?ml' -o \
+            -regex '.github/actions/.+/action\.ya?ml' \) \
             | head -n 1)
           if [ -n "$found_files" ]; then
             echo "workflow_files_found=true" >> "$GITHUB_OUTPUT"
@@ -78,17 +79,29 @@ jobs:
         uses: github/codeql-action/analyze@v4
         with:
           output: ${{ env.CODEQL_RESULTS_DIR }}
-          upload: always
+          upload: never
+
+      - name: Locate SARIF output
+        id: locate_sarif
+        if: steps.check_files.outputs.workflow_files_found == 'true'
+        run: |
+          sarif_file="$(find "${{ env.CODEQL_RESULTS_DIR }}" -maxdepth 1 -type f -name '*.sarif' | head -n 1)"
+          if [ -n "$sarif_file" ]; then
+            echo "sarif_found=true" >> "$GITHUB_OUTPUT"
+            echo "sarif_file=$sarif_file" >> "$GITHUB_OUTPUT"
+          else
+            echo "sarif_found=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Check for vulnerabilities and set status
         id: vuln_check
         if: steps.check_files.outputs.workflow_files_found == 'true'
         run: |
-          sarif_file="${{ env.CODEQL_RESULTS_DIR }}/actions.sarif"
-          if [ ! -f "$sarif_file" ]; then
-            echo "SARIF file not found at $sarif_file"
+          if [ "${{ steps.locate_sarif.outputs.sarif_found }}" != 'true' ]; then
+            echo "SARIF file not found under ${{ env.CODEQL_RESULTS_DIR }}"
             exit 1
           fi
+          sarif_file="${{ steps.locate_sarif.outputs.sarif_file }}"
 
           result_count=$(jq '(.runs[0].results // []) | length' "$sarif_file")
           if [ "$result_count" -gt 0 ]; then
@@ -100,10 +113,16 @@ jobs:
 
           echo "No vulnerabilities found."
 
+      - name: Upload SARIF to code scanning
+        if: always() && steps.locate_sarif.outputs.sarif_found == 'true'
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: ${{ steps.locate_sarif.outputs.sarif_file }}
+
       - name: Explain failures and next steps
         if: failure() && steps.codeql_analysis.conclusion != 'skipped'
         run: |
-          sarif_file="${{ env.CODEQL_RESULTS_DIR }}/actions.sarif"
+          sarif_file="${{ steps.locate_sarif.outputs.sarif_file }}"
           {
             echo "### Security scan results"
             echo
@@ -112,7 +131,7 @@ jobs:
             echo
           } >> "$GITHUB_STEP_SUMMARY"
 
-          if [ -f "$sarif_file" ]; then
+          if [ -n "$sarif_file" ] && [ -f "$sarif_file" ]; then
             echo "#### Findings" >> "$GITHUB_STEP_SUMMARY"
             jq -r '(.runs[0].results // [])[] | "- **" + .ruleId + "**: " + .message.text + " (" + .locations[0].physicalLocation.artifactLocation.uri + ":" + (.locations[0].physicalLocation.region.startLine | tostring) + ")"' "$sarif_file" >> "$GITHUB_STEP_SUMMARY"
           else
