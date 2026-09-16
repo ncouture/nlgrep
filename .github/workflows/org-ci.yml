@@ -12,7 +12,7 @@ permissions:
 jobs:
   org-check:
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Check out pull request
         uses: actions/checkout@v4
@@ -47,7 +47,7 @@ jobs:
 
   org-apply:
     if: github.event_name == 'push' && github.actor != 'github-actions[bot]'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     concurrency:
       group: org-apply-${{ github.ref }}
       cancel-in-progress: true
