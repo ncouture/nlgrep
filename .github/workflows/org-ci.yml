@@ -17,6 +17,8 @@ jobs:
       - name: Check out pull request
         uses: actions/checkout@v4
         with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
 
       - name: Setup minimal Emacs
