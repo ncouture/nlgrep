@@ -40,7 +40,7 @@ jobs:
       security-events: write
     steps:
       - name: Checkout PR code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           fetch-depth: 1
           sparse-checkout: .github
@@ -49,7 +49,7 @@ jobs:
         run: echo "${{ env.ACTIONS_SUITE_CONTENT }}" > actions-suite.qls
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v4
+        uses: github/codeql-action/init@b96794f015dfd88f77b49b1c93e0fa7110f94c63
         with:
           languages: actions
           config: |
@@ -60,7 +60,7 @@ jobs:
 
       - name: Perform CodeQL analysis
         id: codeql_analysis
-        uses: github/codeql-action/analyze@v4
+        uses: github/codeql-action/analyze@b96794f015dfd88f77b49b1c93e0fa7110f94c63
         with:
           output: ${{ env.CODEQL_RESULTS_DIR }}
           upload: never
@@ -99,7 +99,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
       - name: Upload SARIF to code scanning
         if: ${{ always() && steps.codeql_analysis.conclusion == 'success' && steps.locate_sarif.outputs.sarif_found == 'true' && github.event.pull_request.head.repo.full_name == github.repository }}
-        uses: github/codeql-action/upload-sarif@v4
+        uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63
         with:
           sarif_file: ${{ steps.locate_sarif.outputs.sarif_file }}
 
