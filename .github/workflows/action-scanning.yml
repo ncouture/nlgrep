@@ -87,6 +87,12 @@ jobs:
             jq -r '(.runs[0].results // [])[] | "- **" + .ruleId + "**: " + .message.text + " (" + .locations[0].physicalLocation.artifactLocation.uri + ":" + (.locations[0].physicalLocation.region.startLine | tostring) + ")"' "$sarif_file"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
+      - name: Upload SARIF to code scanning
+        if: ${{ always() && steps.locate_sarif.outputs.sarif_found == 'true' && github.event.pull_request.head.repo.full_name == github.repository }}
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: ${{ steps.locate_sarif.outputs.sarif_file }}
+
       - name: Check for vulnerabilities and set status
         id: vuln_check
         run: |
@@ -103,12 +109,6 @@ jobs:
           fi
 
           echo "No vulnerabilities found."
-
-      - name: Upload SARIF to code scanning
-        if: ${{ always() && steps.locate_sarif.outputs.sarif_found == 'true' && github.event.pull_request.head.repo.full_name == github.repository }}
-        uses: github/codeql-action/upload-sarif@v4
-        with:
-          sarif_file: ${{ steps.locate_sarif.outputs.sarif_file }}
 
       - name: Explain failures and next steps
         if: ${{ failure() && steps.codeql_analysis.conclusion != 'skipped' }}
