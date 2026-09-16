@@ -20,7 +20,7 @@ install_from_archives() {
       return 1
     fi
 
-    sudo apt-get install -y --no-download --no-install-recommends "${archives[@]}"
+    sudo dpkg -i "${archives[@]}" || sudo apt-get install -y --no-download -f
   )
 }
 
