@@ -20,7 +20,10 @@ install_from_archives() {
       return 1
     fi
 
-    sudo dpkg -i "${archives[@]}" || sudo apt-get install -y --no-download -f
+    sudo dpkg -i "${archives[@]}" || {
+      sudo apt-get install -y --no-download -f
+      sudo dpkg -i "${archives[@]}"
+    }
     command -v emacs >/dev/null 2>&1
   )
 }
