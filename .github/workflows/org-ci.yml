@@ -19,10 +19,8 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install minimal Emacs
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends emacs-nox
+      - name: Setup minimal Emacs
+        uses: ./.github/actions/setup-emacs
 
       - name: Lint and fix Org files
         run: |
@@ -62,10 +60,8 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Install minimal Emacs
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends emacs-nox
+      - name: Setup minimal Emacs
+        uses: ./.github/actions/setup-emacs
 
       - name: Lint and fix Org files
         run: |

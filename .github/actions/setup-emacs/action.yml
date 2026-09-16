@@ -1,0 +1,18 @@
+name: Setup minimal Emacs
+description: Restore cached Emacs packages and install emacs-nox with minimal downloads.
+
+runs:
+  using: composite
+  steps:
+    - name: Restore Emacs package cache
+      id: emacs-cache
+      uses: actions/cache@v4
+      with:
+        path: /var/cache/apt/archives
+        key: ${{ runner.os }}-apt-emacs-nox-v1
+
+    - name: Install minimal Emacs
+      shell: bash
+      env:
+        EMACS_CACHE_HIT: ${{ steps.emacs-cache.outputs.cache-hit }}
+      run: bash "$GITHUB_ACTION_PATH/install-emacs.sh"
