@@ -46,18 +46,10 @@ jobs:
       - name: Check for workflow files
         id: check_files
         run: |
-          found_files=$(find . -type f \( \
-            -path './.github/workflows/*.yml' -o \
-            -path './.github/workflows/*.yaml' -o \
-            -path './.github/workflows/*/*.yml' -o \
-            -path './.github/workflows/*/*.yaml' -o \
-            -path './.github/actions/*.yml' -o \
-            -path './.github/actions/*.yaml' -o \
-            -path './.github/actions/*/*.yml' -o \
-            -path './.github/actions/*/*.yaml' -o \
-            -path './.github/actions/*/action.yml' -o \
-            -path './.github/actions/*/action.yaml' \
-          \) | head -n 1)
+          found_files=$(find .github -regextype posix-extended -type f \
+            \( -regex '.github/workflows/.+\.ya?ml' -o \
+            -regex '.github/actions/.+\.ya?ml' \) \
+            | head -n 1)
           if [ -n "$found_files" ]; then
             echo "workflow_files_found=true" >> "$GITHUB_OUTPUT"
           else
@@ -96,40 +88,41 @@ jobs:
             exit 1
           fi
 
-          result_count=$(jq '.runs[0].results | length' "$sarif_file")
+          result_count=$(jq '(.runs[0].results // []) | length' "$sarif_file")
           if [ "$result_count" -gt 0 ]; then
             echo "::error::CodeQL found $result_count potential vulnerabilities."
             echo "---"
-            jq -r '.runs[0].results[] | ("Rule ID: " + .ruleId + "\nMessage: " + .message.text + "\nFile: " + .locations[0].physicalLocation.artifactLocation.uri + "\nLine: " + (.locations[0].physicalLocation.region.startLine | tostring) + "\n---")' "$sarif_file"
+            jq -r '(.runs[0].results // [])[] | ("Rule ID: " + .ruleId + "\nMessage: " + .message.text + "\nFile: " + .locations[0].physicalLocation.artifactLocation.uri + "\nLine: " + (.locations[0].physicalLocation.region.startLine | tostring) + "\n---")' "$sarif_file"
             exit 1
           fi
 
           echo "No vulnerabilities found."
 
       - name: Upload SARIF file on failure
-        if: failure() && steps.vuln_check.conclusion == 'failure'
+        if: failure() && steps.codeql_analysis.conclusion != 'skipped'
         uses: actions/upload-artifact@v4
         with:
           name: sarif-report
           path: ${{ steps.codeql_analysis.outputs.sarif-output }}/actions.sarif
+          if-no-files-found: ignore
           retention-days: 1
           overwrite: true
 
       - name: Explain failures and next steps
-        if: failure() && steps.vuln_check.conclusion == 'failure'
+        if: failure() && steps.codeql_analysis.conclusion != 'skipped'
         run: |
           sarif_file="${{ steps.codeql_analysis.outputs.sarif-output }}/actions.sarif"
           {
             echo "### Security scan results"
             echo
             echo "This automated scan checks for common GitHub Actions security issues in workflow and composite action files."
-            echo "Review any flagged findings before merging." 
+            echo "Review any flagged findings before merging."
             echo
           } >> "$GITHUB_STEP_SUMMARY"
 
           if [ -f "$sarif_file" ]; then
             echo "#### Findings" >> "$GITHUB_STEP_SUMMARY"
-            jq -r '.runs[0].results[] | "- **" + .ruleId + "**: " + .message.text + " (" + .locations[0].physicalLocation.artifactLocation.uri + ":" + (.locations[0].physicalLocation.region.startLine | tostring) + ")"' "$sarif_file" >> "$GITHUB_STEP_SUMMARY"
+            jq -r '(.runs[0].results // [])[] | "- **" + .ruleId + "**: " + .message.text + " (" + .locations[0].physicalLocation.artifactLocation.uri + ":" + (.locations[0].physicalLocation.region.startLine | tostring) + ")"' "$sarif_file" >> "$GITHUB_STEP_SUMMARY"
           else
             echo "SARIF file not found, cannot list specific findings." >> "$GITHUB_STEP_SUMMARY"
           fi
