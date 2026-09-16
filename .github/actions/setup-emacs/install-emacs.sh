@@ -7,8 +7,10 @@ if command -v emacs >/dev/null 2>&1; then
   exit 0
 fi
 
-cache_dir=/var/cache/apt/archives
-sudo mkdir -p "${cache_dir}/partial"
+cache_dir="${HOME}/.cache/org-ci/emacs-apt-archives"
+apt_cache_dir=/var/cache/apt/archives
+
+mkdir -p "${cache_dir}"
 
 install_from_archives() {
   local archives=()
@@ -33,6 +35,7 @@ fi
 if ! install_from_archives; then
   sudo apt-get update
   sudo apt-get install -y --download-only --no-install-recommends emacs-nox
+  find "${apt_cache_dir}" -maxdepth 1 -type f -name '*.deb' -exec cp -f {} "${cache_dir}/" \;
   install_from_archives
 fi
 
