@@ -14,11 +14,8 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - name: Check out pull request branch
+      - name: Check out pull request
         uses: actions/checkout@v4
-        with:
-          repository: ${{ github.event.pull_request.head.repo.full_name }}
-          ref: ${{ github.head_ref }}
 
       - name: Install minimal Emacs
         run: |
@@ -29,6 +26,7 @@ jobs:
         run: |
           cat <<'EOF' >/tmp/org-ci-lint.el
           (require 'org)
+          (setq org-ci/lint-failed nil)
           (dolist (file command-line-args-left)
             (with-current-buffer (find-file-noselect file)
               (org-mode)
@@ -42,8 +40,19 @@ jobs:
                 (replace-match "\\1 \\2"))
               (org-table-map-tables #'org-table-align)
               (save-buffer)
-              (org-lint)
+              (let ((issues (org-lint)))
+                (when issues
+                  (setq org-ci/lint-failed t)
+                  (let ((lint-buffer (get-buffer "*Org Lint*")))
+                    (when lint-buffer
+                      (princ (format "\nOrg lint findings for %s:\n%s\n"
+                                     file
+                                     (with-current-buffer lint-buffer
+                                       (buffer-string))))
+                      (kill-buffer lint-buffer)))))
               (kill-buffer)))
+          (when org-ci/lint-failed
+            (kill-emacs 1))
           EOF
 
           mapfile -d '' org_files < <(find "$GITHUB_WORKSPACE" -type f -name '*.org' -print0 | sort -z)
@@ -102,6 +111,7 @@ jobs:
         run: |
           cat <<'EOF' >/tmp/org-ci-lint.el
           (require 'org)
+          (setq org-ci/lint-failed nil)
           (dolist (file command-line-args-left)
             (with-current-buffer (find-file-noselect file)
               (org-mode)
@@ -115,8 +125,19 @@ jobs:
                 (replace-match "\\1 \\2"))
               (org-table-map-tables #'org-table-align)
               (save-buffer)
-              (org-lint)
+              (let ((issues (org-lint)))
+                (when issues
+                  (setq org-ci/lint-failed t)
+                  (let ((lint-buffer (get-buffer "*Org Lint*")))
+                    (when lint-buffer
+                      (princ (format "\nOrg lint findings for %s:\n%s\n"
+                                     file
+                                     (with-current-buffer lint-buffer
+                                       (buffer-string))))
+                      (kill-buffer lint-buffer)))))
               (kill-buffer)))
+          (when org-ci/lint-failed
+            (kill-emacs 1))
           EOF
 
           mapfile -d '' org_files < <(find "$GITHUB_WORKSPACE" -type f -name '*.org' -print0 | sort -z)
