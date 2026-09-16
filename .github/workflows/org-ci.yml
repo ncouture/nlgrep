@@ -7,19 +7,91 @@ name: Org CI
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  org-ci:
-    if: github.actor != 'github-actions[bot]'
+  org-check:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    steps:
+      - name: Check out pull request branch
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.head_ref }}
+
+      - name: Install minimal Emacs
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends emacs-nox
+
+      - name: Lint and fix Org files
+        run: |
+          cat <<'EOF' >/tmp/org-ci-lint.el
+          (require 'org)
+          (dolist (file command-line-args-left)
+            (with-current-buffer (find-file-noselect file)
+              (org-mode)
+              (untabify (point-min) (point-max))
+              (delete-trailing-whitespace)
+              (goto-char (point-min))
+              (while (re-search-forward "^\\([ \t]+\\)\\(#\\+\\)" nil t)
+                (replace-match "\\2"))
+              (goto-char (point-min))
+              (while (re-search-forward "^\\(\\*+\\)\\([^* \n]\\)" nil t)
+                (replace-match "\\1 \\2"))
+              (org-table-map-tables #'org-table-align)
+              (save-buffer)
+              (org-lint)
+              (kill-buffer)))
+          EOF
+
+          mapfile -d '' org_files < <(find "$GITHUB_WORKSPACE" -type f -name '*.org' -print0 | sort -z)
+          if [ "${#org_files[@]}" -gt 0 ]; then
+            emacs --batch --quick -l /tmp/org-ci-lint.el -- "${org_files[@]}"
+          fi
+
+      - name: Export README.org to README.md
+        run: |
+          if [ ! -f "$GITHUB_WORKSPACE/README.org" ]; then
+            echo "README.org not found; skipping export."
+            exit 0
+          fi
+
+          cat <<'EOF' >/tmp/export-readme.el
+          (require 'ox-md)
+          (with-current-buffer
+              (find-file-noselect (expand-file-name "README.org" (getenv "GITHUB_WORKSPACE")))
+            (org-mode)
+            (org-md-export-to-markdown))
+          EOF
+
+          emacs --batch --quick -l /tmp/export-readme.el
+
+      - name: Check for generated updates
+        run: |
+          if git diff --quiet && [ -z "$(git ls-files --others --exclude-standard)" ]; then
+            echo "Org files and README export are up to date."
+            exit 0
+          fi
+
+          echo "Generated updates are required:"
+          git status --short
+          git diff -- . ':(exclude)README.md'
+          git diff -- README.md
+          exit 1
+
+  org-apply:
+    if: github.event_name == 'push' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Check out branch
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          repository: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name || github.repository }}
-          ref: ${{ github.head_ref || github.ref_name }}
+          ref: ${{ github.ref_name }}
 
       - name: Install minimal Emacs
         run: |
@@ -70,9 +142,6 @@ jobs:
           emacs --batch --quick -l /tmp/export-readme.el
 
       - name: Commit and push generated updates
-        if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
-        env:
-          BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
         run: |
           if git diff --quiet && [ -z "$(git ls-files --others --exclude-standard)" ]; then
             echo "No changes to commit."
@@ -89,8 +158,4 @@ jobs:
           fi
 
           git commit -m "chore: normalize Org files and export README"
-          git push origin "HEAD:${BRANCH_NAME}"
-
-      - name: Skip push for fork pull requests
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
-        run: echo "Skipping push for fork pull requests."
+          git push origin "HEAD:${GITHUB_REF_NAME}"
