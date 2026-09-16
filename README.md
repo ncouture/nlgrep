@@ -7,17 +7,17 @@ Unlike standard `grep`, which prints entire lines by default and requires arcane
 
 # Table of Contents
 
-1.  [Key Features](#org1a10c58)
-2.  [Building & Installation](#orga1180bf)
-3.  [Command-Line Reference](#orga7a329e)
-4.  [Exit Codes](#org5b819b8)
-5.  [Context Windows (-A and -B)](#org8620ecc)
-6.  [Natural Language Query Router](#org2420e0d)
-7.  [Supported Data Types & Categories](#org26488af)
-8.  [Algorithmic Verification & Checksums](#orgacf7f1e)
-9.  [Practical Usage Examples](#orgcc5ee98)
-10. [Known Limitations & Behavioral Notes](#org1c06579)
-11. [Architecture & Performance](#orgfe45561)
+1.  [Key Features](#orgc7de675)
+2.  [Building & Installation](#org8b7c83e)
+3.  [Command-Line Reference](#org4ca28ca)
+4.  [Exit Codes](#org63240b9)
+5.  [Context Windows (-A and -B)](#org8bfa7bb)
+6.  [Natural Language Query Router](#orga860188)
+7.  [Supported Data Types & Categories](#org3d6e565)
+8.  [Algorithmic Verification & Checksums](#orgfb0e8bf)
+9.  [Practical Usage Examples](#orgb5e898f)
+10. [Known Limitations & Behavioral Notes](#org1e32bcc)
+11. [Architecture & Performance](#org535f9a5)
 
 ---
 

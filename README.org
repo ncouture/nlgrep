@@ -87,16 +87,16 @@ Usage:
 
 ** Flags and Options
 
-| Flag                          | Type    | Description                                                                            |
-|-------------------------------+---------+----------------------------------------------------------------------------------------|
-| ~--line~, ~-L~, ~-whole-line~ | bool    | Print the *entire line* containing the match (default prints only the pattern).        |
-| ~-A <N>~                      | int     | Print ~<N>~ lines *after and including* the line containing the pattern.               |
-| ~-B <M>~                      | int     | Print ~<M>~ lines *before and including* the line containing the pattern.              |
-| ~-n~                          | bool    | Prefix each output line with its 1-based line number (~line:match~ or ~line-context~). |
-| ~-u~                          | bool    | Deduplicate matching values so each distinct item is printed only once.                |
-| ~-c~                          | bool    | Suppress normal output and print only the total count of matched items.                |
-| ~--color <when>~              | string  | Colorize matches: ~auto~ (default for TTY), ~always~, or ~never~.                      |
-| ~list~, ~help~, ~--help~, ~-h~ | command | Display available data types, aliases, and examples.                                    |
+| Flag                           | Type    | Description                                                                            |
+|--------------------------------+---------+----------------------------------------------------------------------------------------|
+| ~--line~, ~-L~, ~-whole-line~  | bool    | Print the *entire line* containing the match (default prints only the pattern).        |
+| ~-A <N>~                       | int     | Print ~<N>~ lines *after and including* the line containing the pattern.               |
+| ~-B <M>~                       | int     | Print ~<M>~ lines *before and including* the line containing the pattern.              |
+| ~-n~                           | bool    | Prefix each output line with its 1-based line number (~line:match~ or ~line-context~). |
+| ~-u~                           | bool    | Deduplicate matching values so each distinct item is printed only once.                |
+| ~-c~                           | bool    | Suppress normal output and print only the total count of matched items.                |
+| ~--color <when>~               | string  | Colorize matches: ~auto~ (default for TTY), ~always~, or ~never~.                      |
+| ~list~, ~help~, ~--help~, ~-h~ | command | Display available data types, aliases, and examples.                                   |
 
 Notes on flag behavior:
 
@@ -115,12 +115,12 @@ nlgrep list 2>&1 | grep coordinates
 
 * Exit Codes
 
-| Code | Meaning                                                  |
-|------+----------------------------------------------------------|
+| Code | Meaning                                                    |
+|------+------------------------------------------------------------|
 |    0 | Success — including the case where *no matches* were found |
-|    1 | No arguments supplied (usage printed to STDERR)          |
-|    2 | Unrecognized data type or query                          |
-|    3 | Failed to open an input file                             |
+|    1 | No arguments supplied (usage printed to STDERR)            |
+|    2 | Unrecognized data type or query                            |
+|    3 | Failed to open an input file                               |
 
 *This differs from ~grep~*, which exits ~1~ when nothing matches. A shell test like ~nlgrep ssns data.csv && alert~ will fire unconditionally. Test for output instead:
 
@@ -174,8 +174,8 @@ You don't need to memorize exact command strings. The built-in router resolves a
 
 ** Query Examples
 
-| User Query                               | Resolved Extractor |
-|------------------------------------------+--------------------|
+| User Query                                  | Resolved Extractor |
+|---------------------------------------------+--------------------|
 | ~nlgrep urls~                               | ~urls~             |
 | ~nlgrep "extract all web links"~            | ~urls~             |
 | ~nlgrep "find email addresses"~             | ~emails~           |
@@ -195,37 +195,37 @@ You don't need to memorize exact command strings. The built-in router resolves a
 
 29 extractors across 16 categories. Run ~nlgrep list 2>&1~ to view them from the binary itself — the ~Registry~ in ~nlgrep.go~ is the authoritative source.
 
-| Category               | Extractor ID    | Standard / Grammar                     | Verification Method                                   |
-|------------------------+-----------------+----------------------------------------+-------------------------------------------------------|
-| *Automotive*           | ~vins~          | ISO 3779 Vehicle Identification        | *Weighted Modulo-11 Check Digit Algorithm*            |
-| *Aviation & Weather*   | ~metar~         | ICAO METAR aerodrome reports           | Station + DDHHMMZ + wind + visibility sequence        |
-| *Blockchain*           | ~crypto~        | Bitcoin, Ethereum                      | Legacy/Bech32 BTC shape, ~0x~ + 40 hex ETH            |
-| *Communications*       | ~emails~        | RFC 5322 Standard Email                | Structure + domain/TLD syntax                         |
-|                        | ~phone_numbers~ | E.164 & regionally formatted numbers   | Digit-group shape and delimiter check                 |
-|                        | ~subjects~      | RFC 822 Email / Ticket Headers         | Line-anchored ~Subject:~/~Re:~/~Fwd:~/~Fw:~ capture   |
-| *Cybersecurity*        | ~cves~          | MITRE CVE Vulnerability IDs            | ~CVE-\d{4}-\d{4,7}~ format rules                      |
-|                        | ~hashes~        | MD5 (32-hex), SHA-1 (40), SHA-256 (64) | Fixed-width hexadecimal digest bounds                 |
-| *Data Formats*         | ~jsonpath~      | RFC 9535 JSONPath Expressions          | Root ~$~ anchor with dot/bracket selectors            |
-|                        | ~xpath~         | W3C XPath Navigation Expressions       | ~/~, ~//~, ~@attribute~, and predicate syntax         |
-| *Financial*            | ~credit_cards~  | Visa, MC, Amex, Discover PAN           | *Luhn Modulo-10 Checksum Algorithm*                   |
-|                        | ~ibans~         | ISO 13616 International Bank Accounts  | *Modulo-97-10 Checksum Algorithm* (~big.Int~)         |
-|                        | ~currencies~    | ISO 4217 Currency Codes                | Fixed list of 20 major codes (see note below)         |
-| *Gaming & Notation*    | ~chess_fen~     | Forsyth–Edwards Notation (FEN)         | 8-rank structure + full field sequence                |
-| *Geospatial*           | ~coordinates~   | Decimal Degree coordinate pairs        | Lat $[-90, +90]$ / Lon $[-180, +180]$ bounds in regex |
-| *Government & Identity* | ~ssns~         | US Social Security Numbers             | Area (~!= 000, 666, >=900~) & group rules             |
-| *Identity*             | ~names~         | Personal Names (Honorific Anchored)    | Anchored on ~Mr.~, ~Mrs.~, ~Dr.~, ~Prof.~, etc.       |
-| *Networking*           | ~ips~           | IPv4 and IPv6                          | Parsed with Go's ~net.ParseIP~                        |
-|                        | ~mac_addresses~ | EUI-48 Hexadecimal                     | Colon or hyphen delimited 6-octet form                |
-|                        | ~asns~          | Autonomous System Numbers              | BGP ~AS<number>~ format bounds                        |
-| *Publishing & Academic* | ~dois~         | ISO 26324 Digital Object Identifiers   | Standard ~10.\d{4,9}/...~ registry syntax             |
-|                        | ~isbns~         | ISBN-10 & ISBN-13 Books                | *Modulo-11 & Modulo-10 Check Digit Math*              |
-| *Software & Systems*   | ~uuids~         | RFC 4122 128-bit UUID/GUID             | 8-4-4-4-12 layout with version and variant bits       |
-|                        | ~semver~        | SemVer 2.0.0 Version Strings           | ~MAJOR.MINOR.PATCH~ with prerelease/build tags        |
-|                        | ~cron~          | UNIX 5-field Cron Syntax               | Minute, hour, DOM, month, DOW range parser            |
-| *Temporal*             | ~dates~         | ISO 8601 ~YYYY-MM-DD~ and ~MM/DD/YYYY~ | Month $[01,12]$ and day $[01,31]$ range bounds        |
-| *Web & Internet*       | ~urls~          | RFC 3986 URI Specification             | Scheme anchor (~http~, ~https~, ~ftp~, ~www.~)        |
-|                        | ~domains~       | FQDN (Fully Qualified Domain Names)    | Fixed list of ~24 common TLDs (see note below)        |
-|                        | ~user_agents~   | HTTP User-Agent tokens                 | ~Mozilla/5.0~ prefixed signatures only                |
+| Category                | Extractor ID    | Standard / Grammar                     | Verification Method                                   |
+|-------------------------+-----------------+----------------------------------------+-------------------------------------------------------|
+| *Automotive*            | ~vins~          | ISO 3779 Vehicle Identification        | *Weighted Modulo-11 Check Digit Algorithm*            |
+| *Aviation & Weather*    | ~metar~         | ICAO METAR aerodrome reports           | Station + DDHHMMZ + wind + visibility sequence        |
+| *Blockchain*            | ~crypto~        | Bitcoin, Ethereum                      | Legacy/Bech32 BTC shape, ~0x~ + 40 hex ETH            |
+| *Communications*        | ~emails~        | RFC 5322 Standard Email                | Structure + domain/TLD syntax                         |
+|                         | ~phone_numbers~ | E.164 & regionally formatted numbers   | Digit-group shape and delimiter check                 |
+|                         | ~subjects~      | RFC 822 Email / Ticket Headers         | Line-anchored ~Subject:~/~Re:~/~Fwd:~/~Fw:~ capture   |
+| *Cybersecurity*         | ~cves~          | MITRE CVE Vulnerability IDs            | ~CVE-\d{4}-\d{4,7}~ format rules                      |
+|                         | ~hashes~        | MD5 (32-hex), SHA-1 (40), SHA-256 (64) | Fixed-width hexadecimal digest bounds                 |
+| *Data Formats*          | ~jsonpath~      | RFC 9535 JSONPath Expressions          | Root ~$~ anchor with dot/bracket selectors            |
+|                         | ~xpath~         | W3C XPath Navigation Expressions       | ~/~, ~//~, ~@attribute~, and predicate syntax         |
+| *Financial*             | ~credit_cards~  | Visa, MC, Amex, Discover PAN           | *Luhn Modulo-10 Checksum Algorithm*                   |
+|                         | ~ibans~         | ISO 13616 International Bank Accounts  | *Modulo-97-10 Checksum Algorithm* (~big.Int~)         |
+|                         | ~currencies~    | ISO 4217 Currency Codes                | Fixed list of 20 major codes (see note below)         |
+| *Gaming & Notation*     | ~chess_fen~     | Forsyth–Edwards Notation (FEN)         | 8-rank structure + full field sequence                |
+| *Geospatial*            | ~coordinates~   | Decimal Degree coordinate pairs        | Lat $[-90, +90]$ / Lon $[-180, +180]$ bounds in regex |
+| *Government & Identity* | ~ssns~          | US Social Security Numbers             | Area (~!= 000, 666, >=900~) & group rules             |
+| *Identity*              | ~names~         | Personal Names (Honorific Anchored)    | Anchored on ~Mr.~, ~Mrs.~, ~Dr.~, ~Prof.~, etc.       |
+| *Networking*            | ~ips~           | IPv4 and IPv6                          | Parsed with Go's ~net.ParseIP~                        |
+|                         | ~mac_addresses~ | EUI-48 Hexadecimal                     | Colon or hyphen delimited 6-octet form                |
+|                         | ~asns~          | Autonomous System Numbers              | BGP ~AS<number>~ format bounds                        |
+| *Publishing & Academic* | ~dois~          | ISO 26324 Digital Object Identifiers   | Standard ~10.\d{4,9}/...~ registry syntax             |
+|                         | ~isbns~         | ISBN-10 & ISBN-13 Books                | *Modulo-11 & Modulo-10 Check Digit Math*              |
+| *Software & Systems*    | ~uuids~         | RFC 4122 128-bit UUID/GUID             | 8-4-4-4-12 layout with version and variant bits       |
+|                         | ~semver~        | SemVer 2.0.0 Version Strings           | ~MAJOR.MINOR.PATCH~ with prerelease/build tags        |
+|                         | ~cron~          | UNIX 5-field Cron Syntax               | Minute, hour, DOM, month, DOW range parser            |
+| *Temporal*              | ~dates~         | ISO 8601 ~YYYY-MM-DD~ and ~MM/DD/YYYY~ | Month $[01,12]$ and day $[01,31]$ range bounds        |
+| *Web & Internet*        | ~urls~          | RFC 3986 URI Specification             | Scheme anchor (~http~, ~https~, ~ftp~, ~www.~)        |
+|                         | ~domains~       | FQDN (Fully Qualified Domain Names)    | Fixed list of ~24 common TLDs (see note below)        |
+|                         | ~user_agents~   | HTTP User-Agent tokens                 | ~Mozilla/5.0~ prefixed signatures only                |
 
 Two entries carry aliases broader than their implementation:
 
