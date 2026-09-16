@@ -42,6 +42,10 @@ if ! install_from_archives; then
   sudo apt-get update
   sudo apt-get -o Dir::Cache::archives="${cache_dir}" install -y --no-install-recommends emacs-nox
   sudo chown -R "$(id -u):$(id -g)" "${cache_dir}"
+  if ! command -v emacs >/dev/null 2>&1; then
+    echo "Emacs installation failed: emacs not found on PATH after apt install." >&2
+    exit 1
+  fi
 fi
 
 emacs --version | head -n 1
