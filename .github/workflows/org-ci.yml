@@ -100,7 +100,13 @@ jobs:
           for attempt in 1 2 3; do
             git fetch origin "${GITHUB_REF_NAME}"
             git reset --hard "origin/${GITHUB_REF_NAME}"
-            git cherry-pick "${generated_commit}"
+            if ! git cherry-pick "${generated_commit}"; then
+              git cherry-pick --abort || true
+              git reset --hard "origin/${GITHUB_REF_NAME}"
+              echo "Cherry-pick attempt ${attempt} failed; retrying." >&2
+              sleep 2
+              continue
+            fi
 
             if git push origin "HEAD:${GITHUB_REF_NAME}"; then
               exit 0
