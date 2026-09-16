@@ -29,7 +29,6 @@ env:
 
 permissions:
   contents: read
-  actions: write
 
 jobs:
   scan-pr:
@@ -37,6 +36,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      security-events: write
     steps:
       - name: Checkout PR code
         uses: actions/checkout@v4
@@ -78,7 +78,7 @@ jobs:
         uses: github/codeql-action/analyze@v4
         with:
           output: ${{ env.CODEQL_RESULTS_DIR }}
-          upload: never
+          upload: always
 
       - name: Check for vulnerabilities and set status
         id: vuln_check
@@ -99,16 +99,6 @@ jobs:
           fi
 
           echo "No vulnerabilities found."
-
-      - name: Upload SARIF file on failure
-        if: failure() && steps.codeql_analysis.conclusion != 'skipped'
-        uses: actions/upload-artifact@v4
-        with:
-          name: sarif-report
-          path: ${{ env.CODEQL_RESULTS_DIR }}/actions.sarif
-          if-no-files-found: ignore
-          retention-days: 1
-          overwrite: true
 
       - name: Explain failures and next steps
         if: failure() && steps.codeql_analysis.conclusion != 'skipped'
