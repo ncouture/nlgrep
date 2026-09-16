@@ -15,17 +15,20 @@
       (replace-match "\\1 \\2"))
     (org-table-map-tables #'org-table-align)
     (save-buffer)
-    (let ((issues (org-lint)))
-      (when issues
+    (let* ((issues (org-lint))
+           (lint-output
+            (cond
+             ((and (listp issues) issues)
+              (mapconcat (lambda (issue) (format "%S" issue)) issues "\n"))
+             ((let ((lint-buffer (get-buffer "*Org Lint*")))
+                (and lint-buffer
+                     (> (with-current-buffer lint-buffer (buffer-size)) 0)))
+              (prog1
+                  (with-current-buffer "*Org Lint*" (buffer-string))
+                (kill-buffer "*Org Lint*"))))))
+      (when lint-output
         (setq org-ci/lint-failed t)
-        (let ((lint-buffer (get-buffer "*Org Lint*")))
-          (when lint-buffer
-            (princ
-             (format "\nOrg lint findings for %s:\n%s\n"
-                     file
-                     (with-current-buffer lint-buffer
-                       (buffer-string))))
-            (kill-buffer lint-buffer)))))
+        (princ (format "\nOrg lint findings for %s:\n%s\n" file lint-output))))
     (kill-buffer)))
 
 (when org-ci/lint-failed
