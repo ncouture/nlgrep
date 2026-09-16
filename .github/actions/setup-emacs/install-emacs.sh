@@ -33,9 +33,10 @@ else
 fi
 
 if ! install_from_archives; then
+  find "${cache_dir}" -maxdepth 1 -type f -name '*.deb' -delete
+  sudo find "${apt_cache_dir}" -maxdepth 1 -type f -name '*.deb' -delete
   sudo apt-get update
   sudo apt-get install -y --download-only --no-install-recommends emacs-nox
-  find "${cache_dir}" -maxdepth 1 -type f -name '*.deb' -delete
   find "${apt_cache_dir}" -maxdepth 1 -type f -name '*.deb' -exec cp -f {} "${cache_dir}/" \;
   install_from_archives
 fi
