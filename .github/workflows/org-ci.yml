@@ -97,4 +97,6 @@ jobs:
           fi
 
           git commit -m "chore: normalize Org files and export README"
+          git fetch origin "${GITHUB_REF_NAME}"
+          git rebase "origin/${GITHUB_REF_NAME}"
           git push origin "HEAD:${GITHUB_REF_NAME}"
