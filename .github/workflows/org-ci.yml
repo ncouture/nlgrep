@@ -81,6 +81,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
+
           if git diff --quiet && [ -z "$(git ls-files --others --exclude-standard)" ]; then
             echo "No changes to commit."
             exit 0
