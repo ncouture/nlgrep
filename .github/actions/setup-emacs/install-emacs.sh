@@ -8,22 +8,20 @@ if command -v emacs >/dev/null 2>&1; then
 fi
 
 cache_dir="${HOME}/.cache/org-ci/emacs-apt-archives"
-apt_cache_dir=/var/cache/apt/archives
-
-mkdir -p "${cache_dir}"
+mkdir -p "${cache_dir}/partial"
 
 install_from_archives() {
-  local archives=()
+  (
+    cd "${cache_dir}"
+    shopt -s nullglob
+    local archives=(./*.deb)
 
-  while IFS= read -r -d '' archive; do
-    archives+=("${archive}")
-  done < <(find "${cache_dir}" -maxdepth 1 -type f -name '*.deb' -print0 | sort -z)
+    if [ "${#archives[@]}" -eq 0 ]; then
+      return 1
+    fi
 
-  if [ "${#archives[@]}" -eq 0 ]; then
-    return 1
-  fi
-
-  sudo apt-get install -y --no-download --no-install-recommends "${archives[@]}"
+    sudo apt-get install -y --no-download --no-install-recommends "${archives[@]}"
+  )
 }
 
 if [ "${EMACS_CACHE_HIT:-false}" = "true" ]; then
@@ -34,10 +32,9 @@ fi
 
 if ! install_from_archives; then
   find "${cache_dir}" -maxdepth 1 -type f -name '*.deb' -delete
-  sudo find "${apt_cache_dir}" -maxdepth 1 -type f -name '*.deb' -delete
   sudo apt-get update
-  sudo apt-get install -y --download-only --no-install-recommends emacs-nox
-  find "${apt_cache_dir}" -maxdepth 1 -type f -name '*.deb' -exec cp -f {} "${cache_dir}/" \;
+  sudo apt-get -o Dir::Cache::archives="${cache_dir}" install -y --download-only --no-install-recommends emacs-nox
+  sudo chown -R "$(id -u):$(id -g)" "${cache_dir}"
   install_from_archives
 fi
 
