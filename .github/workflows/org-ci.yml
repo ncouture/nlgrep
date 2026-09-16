@@ -23,6 +23,8 @@ jobs:
         uses: ./.github/actions/setup-emacs
 
       - name: Lint and fix Org files
+        env:
+          ORG_CI_FAIL_ON_LINT: "true"
         run: |
           mapfile -d '' org_files < <(find "$GITHUB_WORKSPACE" -type f -name '*.org' -print0 | sort -z)
           if [ "${#org_files[@]}" -gt 0 ]; then
@@ -64,6 +66,8 @@ jobs:
         uses: ./.github/actions/setup-emacs
 
       - name: Lint and fix Org files
+        env:
+          ORG_CI_FAIL_ON_LINT: "false"
         run: |
           mapfile -d '' org_files < <(find "$GITHUB_WORKSPACE" -type f -name '*.org' -print0 | sort -z)
           if [ "${#org_files[@]}" -gt 0 ]; then
@@ -100,6 +104,10 @@ jobs:
           for attempt in 1 2 3; do
             git fetch origin "${GITHUB_REF_NAME}"
             git reset --hard "origin/${GITHUB_REF_NAME}"
+            if [ "$(git cherry "origin/${GITHUB_REF_NAME}" "${generated_commit}" | cut -d' ' -f1)" = "-" ]; then
+              echo "Generated changes are already present upstream."
+              exit 0
+            fi
             if ! git cherry-pick "${generated_commit}"; then
               git cherry-pick --abort || true
               git reset --hard "origin/${GITHUB_REF_NAME}"
