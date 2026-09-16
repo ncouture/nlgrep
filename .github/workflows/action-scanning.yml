@@ -105,13 +105,13 @@ jobs:
           echo "No vulnerabilities found."
 
       - name: Upload SARIF to code scanning
-        if: always() && steps.locate_sarif.outputs.sarif_found == 'true' && github.event.pull_request.head.repo.full_name == github.repository
+        if: ${{ always() && steps.locate_sarif.outputs.sarif_found == 'true' && github.event.pull_request.head.repo.full_name == github.repository }}
         uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: ${{ steps.locate_sarif.outputs.sarif_file }}
 
       - name: Explain failures and next steps
-        if: failure() && steps.codeql_analysis.conclusion != 'skipped'
+        if: ${{ failure() && steps.codeql_analysis.conclusion != 'skipped' }}
         run: |
           sarif_file="${{ steps.locate_sarif.outputs.sarif_file }}"
           {
