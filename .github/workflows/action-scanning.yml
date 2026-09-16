@@ -25,6 +25,7 @@ env:
         id: actions/untrusted-checkout/critical
     - include:
         id: actions/untrusted-checkout/high
+  CODEQL_RESULTS_DIR: ${{ runner.temp }}/codeql-results
 
 permissions:
   contents: read
@@ -62,7 +63,7 @@ jobs:
 
       - name: Initialize CodeQL
         if: steps.check_files.outputs.workflow_files_found == 'true'
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           languages: actions
           config: |
@@ -74,15 +75,16 @@ jobs:
       - name: Perform CodeQL analysis
         id: codeql_analysis
         if: steps.check_files.outputs.workflow_files_found == 'true'
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
         with:
+          output: ${{ env.CODEQL_RESULTS_DIR }}
           upload: never
 
       - name: Check for vulnerabilities and set status
         id: vuln_check
         if: steps.check_files.outputs.workflow_files_found == 'true'
         run: |
-          sarif_file="${{ steps.codeql_analysis.outputs.sarif-output }}/actions.sarif"
+          sarif_file="${{ env.CODEQL_RESULTS_DIR }}/actions.sarif"
           if [ ! -f "$sarif_file" ]; then
             echo "SARIF file not found at $sarif_file"
             exit 1
@@ -103,7 +105,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: sarif-report
-          path: ${{ steps.codeql_analysis.outputs.sarif-output }}/actions.sarif
+          path: ${{ env.CODEQL_RESULTS_DIR }}/actions.sarif
           if-no-files-found: ignore
           retention-days: 1
           overwrite: true
@@ -111,7 +113,7 @@ jobs:
       - name: Explain failures and next steps
         if: failure() && steps.codeql_analysis.conclusion != 'skipped'
         run: |
-          sarif_file="${{ steps.codeql_analysis.outputs.sarif-output }}/actions.sarif"
+          sarif_file="${{ env.CODEQL_RESULTS_DIR }}/actions.sarif"
           {
             echo "### Security scan results"
             echo
